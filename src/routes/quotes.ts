@@ -3,15 +3,48 @@ import { randomBytes } from 'crypto';
 import { validateUserData } from '../types/user-data.js';
 import { QuoteAggregationResult, ProgressEvent } from '../types/quote.js';
 import { aggregateQuotesWithWorkflow } from '../services/workflow-quote-aggregator.js';
+import { kv } from '@vercel/kv';
 
 const router = Router();
 
-// In-memory storage for quote runs (in production, use Redis or database)
-const quoteRuns = new Map<string, {
+// Shared storage interface - works with both Vercel KV and in-memory fallback
+interface QuoteRunData {
   status: 'processing' | 'completed';
   result?: QuoteAggregationResult;
   events: ProgressEvent[];
-}>();
+}
+
+// In-memory fallback for local development
+const localQuoteRuns = new Map<string, QuoteRunData>();
+
+// Storage helpers that work with both KV and local
+async function getQuoteRun(runId: string): Promise<QuoteRunData | null> {
+  if (process.env.KV_REST_API_URL) {
+    // Use Vercel KV in production
+    return await kv.get<QuoteRunData>(`quote:${runId}`);
+  } else {
+    // Use in-memory for local development
+    return localQuoteRuns.get(runId) || null;
+  }
+}
+
+async function setQuoteRun(runId: string, data: QuoteRunData): Promise<void> {
+  if (process.env.KV_REST_API_URL) {
+    // Use Vercel KV with 2-hour expiration
+    await kv.set(`quote:${runId}`, data, { ex: 7200 });
+  } else {
+    // Use in-memory for local development
+    localQuoteRuns.set(runId, data);
+  }
+}
+
+async function updateQuoteRunEvents(runId: string, event: ProgressEvent): Promise<void> {
+  const run = await getQuoteRun(runId);
+  if (run) {
+    run.events.push(event);
+    await setQuoteRun(runId, run);
+  }
+}
 
 /**
  * POST /api/quotes
@@ -42,31 +75,30 @@ router.post('/quotes', async (req: Request, res: Response) => {
     // Generate unique run ID
     const runId = randomBytes(16).toString('hex');
 
-    // Initialize run storage
-    quoteRuns.set(runId, {
+    // Initialize run storage in shared storage
+    await setQuoteRun(runId, {
       status: 'processing',
       events: [],
     });
 
     // Start aggregation in background with multi-step workflow
-    aggregateQuotesWithWorkflow(userData, apiKey, runId, (event: ProgressEvent) => {
-      const run = quoteRuns.get(runId);
-      if (run) {
-        run.events.push(event);
-      }
+    aggregateQuotesWithWorkflow(userData, apiKey, runId, async (event: ProgressEvent) => {
+      await updateQuoteRunEvents(runId, event);
     })
-      .then(result => {
-        const run = quoteRuns.get(runId);
+      .then(async result => {
+        const run = await getQuoteRun(runId);
         if (run) {
           run.status = 'completed';
           run.result = result;
+          await setQuoteRun(runId, run);
         }
       })
-      .catch(error => {
+      .catch(async error => {
         console.error(`Error in quote aggregation ${runId}:`, error);
-        const run = quoteRuns.get(runId);
+        const run = await getQuoteRun(runId);
         if (run) {
           run.status = 'completed';
+          await setQuoteRun(runId, run);
         }
       });
 
@@ -89,9 +121,9 @@ router.post('/quotes', async (req: Request, res: Response) => {
  * GET /api/quotes/:runId
  * Get current status of a quote run (supports HTTP polling fallback)
  */
-router.get('/quotes/:runId', (req: Request, res: Response) => {
+router.get('/quotes/:runId', async (req: Request, res: Response) => {
   const { runId } = req.params;
-  const run = quoteRuns.get(runId);
+  const run = await getQuoteRun(runId);
 
   if (!run) {
     return res.status(404).json({
@@ -123,9 +155,9 @@ router.get('/quotes/:runId', (req: Request, res: Response) => {
  * GET /api/quotes/:runId/stream
  * SSE endpoint for real-time quote updates with reconnection support
  */
-router.get('/quotes/:runId/stream', (req: Request, res: Response) => {
+router.get('/quotes/:runId/stream', async (req: Request, res: Response) => {
   const { runId } = req.params;
-  const run = quoteRuns.get(runId);
+  const run = await getQuoteRun(runId);
 
   if (!run) {
     return res.status(404).json({
@@ -151,9 +183,9 @@ router.get('/quotes/:runId/stream', (req: Request, res: Response) => {
     lastEventIndex = i + 1;
   }
 
-  // Poll for new events
-  const intervalId = setInterval(() => {
-    const currentRun = quoteRuns.get(runId);
+  // Poll for new events from shared storage
+  const intervalId = setInterval(async () => {
+    const currentRun = await getQuoteRun(runId);
     if (!currentRun) {
       clearInterval(intervalId);
       res.end();

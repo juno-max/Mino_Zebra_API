@@ -11,8 +11,5 @@
       "src": "/(.*)",
       "dest": "src/index.ts"
     }
-  ],
-  "env": {
-    "MINO_API_KEY": "@mino_api_key"
-  }
+  ]
 }

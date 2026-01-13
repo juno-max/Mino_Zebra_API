@@ -98,6 +98,67 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Provider Showcase */
+        .provider-showcase {
+            max-width: 1800px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .showcase-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .showcase-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .showcase-subtitle {
+            font-size: 1rem;
+            color: var(--gray);
+        }
+
+        .provider-showcase-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .provider-chip {
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: default;
+        }
+
+        .provider-chip:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0, 98, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .provider-chip-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .provider-chip-url {
+            font-size: 0.7rem;
+            color: var(--gray);
+            font-family: 'Monaco', monospace;
+        }
+
         /* Main Layout */
         .main-container {
             max-width: 1800px;
@@ -549,6 +610,56 @@
         </div>
     </div>
 
+    <!-- Provider Showcase -->
+    <div class="provider-showcase">
+        <div class="showcase-header">
+            <div class="showcase-title">Compare Quotes from 10 Major Insurance Providers</div>
+            <div class="showcase-subtitle">AI agents search all providers simultaneously to find your best rate</div>
+        </div>
+        <div class="provider-showcase-grid">
+            <div class="provider-chip">
+                <div class="provider-chip-name">GEICO</div>
+                <div class="provider-chip-url">geico.com</div>
+            </div>
+            <div class="provider-chip">
+                <div class="provider-chip-name">Progressive</div>
+                <div class="provider-chip-url">progressive.com</div>
+            </div>
+            <div class="provider-chip">
+                <div class="provider-chip-name">State Farm</div>
+                <div class="provider-chip-url">statefarm.com</div>
+            </div>
+            <div class="provider-chip">
+                <div class="provider-chip-name">Allstate</div>
+                <div class="provider-chip-url">allstate.com</div>
+            </div>
+            <div class="provider-chip">
+                <div class="provider-chip-name">Liberty Mutual</div>
+                <div class="provider-chip-url">libertymutual.com</div>
+            </div>
+            <div class="provider-chip">
+                <div class="provider-chip-name">Nationwide</div>
+                <div class="provider-chip-url">nationwide.com</div>
+            </div>
+            <div class="provider-chip">
+                <div class="provider-chip-name">Farmers Insurance</div>
+                <div class="provider-chip-url">farmers.com</div>
+            </div>
+            <div class="provider-chip">
+                <div class="provider-chip-name">USAA</div>
+                <div class="provider-chip-url">usaa.com</div>
+            </div>
+            <div class="provider-chip">
+                <div class="provider-chip-name">Travelers</div>
+                <div class="provider-chip-url">travelers.com</div>
+            </div>
+            <div class="provider-chip">
+                <div class="provider-chip-name">American Family</div>
+                <div class="provider-chip-url">amfam.com</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Container -->
     <div class="main-container">
         <!-- LEFT: Questionnaire -->
@@ -745,7 +856,118 @@
             startQuoteSearch();
         });
 
+        // Reconnection logic for resilient SSE streaming
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 10;
+        let pollingFallbackInterval = null;
+        let isCompleted = false;
+
+        function connectToStream(runId, streamUrl) {
+            if (isCompleted) return;
+
+            addLog(`→ Connecting to stream (attempt ${reconnectAttempts + 1})...`, 'info');
+
+            eventSource = new EventSource(`${API_BASE}${streamUrl}`);
+
+            eventSource.onopen = () => {
+                if (reconnectAttempts > 0) {
+                    addLog('✓ Reconnected successfully!', 'success');
+                }
+                reconnectAttempts = 0; // Reset on successful connection
+            };
+
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'activity' && data.activity) {
+                    addLog(`🤖 ${data.provider}: ${data.activity}`, 'agent');
+                    updateProviderActivity(data.providerId, data.activity);
+                }
+
+                if (data.type === 'progress' || data.type === 'complete') {
+                    updateProviderCards(data.aggregation);
+                }
+
+                if (data.type === 'complete') {
+                    isCompleted = true;
+                    eventSource.close();
+                    if (pollingFallbackInterval) {
+                        clearInterval(pollingFallbackInterval);
+                    }
+                    document.getElementById('searchBtn').disabled = false;
+                    document.getElementById('searchBtn').textContent = '🔄 Search Again';
+                    updateHeaderStatus('ready');
+                    addLog('✓ All agents completed their tasks', 'success');
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('SSE Connection Error:', error);
+                console.error('EventSource readyState:', eventSource.readyState);
+
+                eventSource.close();
+
+                if (isCompleted) {
+                    return; // Don't reconnect if already completed
+                }
+
+                reconnectAttempts++;
+
+                if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
+                    // Exponential backoff: 2^n seconds (max 30 seconds)
+                    const delay = Math.min(Math.pow(2, reconnectAttempts) * 1000, 30000);
+                    addLog(`⚠ Connection lost. Reconnecting in ${delay/1000}s...`, 'warning');
+
+                    setTimeout(() => {
+                        connectToStream(runId, streamUrl);
+                    }, delay);
+                } else {
+                    // Switch to polling fallback
+                    addLog('→ Switching to polling mode...', 'warning');
+                    startPollingFallback(runId);
+                }
+            };
+        }
+
+        // Fallback polling mechanism if SSE keeps failing
+        async function startPollingFallback(runId) {
+            if (pollingFallbackInterval) return; // Already polling
+
+            addLog('→ Using HTTP polling for updates', 'info');
+
+            pollingFallbackInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/quotes/${runId}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.status === 'completed' && data.quotes) {
+                        // Got final result via polling
+                        updateProviderCards(data);
+                        isCompleted = true;
+                        clearInterval(pollingFallbackInterval);
+                        document.getElementById('searchBtn').disabled = false;
+                        document.getElementById('searchBtn').textContent = '🔄 Search Again';
+                        updateHeaderStatus('ready');
+                        addLog('✓ Results received via polling', 'success');
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }, 3000); // Poll every 3 seconds
+        }
+
         async function startQuoteSearch() {
+            // Reset state
+            isCompleted = false;
+            reconnectAttempts = 0;
+            if (pollingFallbackInterval) {
+                clearInterval(pollingFallbackInterval);
+                pollingFallbackInterval = null;
+            }
             const formData = {
                 vin: document.getElementById('vin').value,
                 employmentStatus: 'EMPLOYED',
@@ -797,56 +1019,8 @@
                 addLog(`✓ Quote request ID: ${runId}`, 'success');
                 addLog('→ Opening real-time stream...', 'info');
 
-                // Connect to SSE
-                eventSource = new EventSource(`${API_BASE}${streamUrl}`);
-
-                eventSource.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-
-                    if (data.type === 'activity' && data.activity) {
-                        // Handle real-time activity updates
-                        addLog(`🤖 ${data.provider}: ${data.activity}`, 'agent');
-                        updateProviderActivity(data.providerId, data.activity);
-                    }
-
-                    if (data.type === 'progress' || data.type === 'complete') {
-                        updateProviderCards(data.aggregation);
-                    }
-
-                    if (data.type === 'complete') {
-                        eventSource.close();
-                        document.getElementById('searchBtn').disabled = false;
-                        document.getElementById('searchBtn').textContent = '🔄 Search Again';
-                        updateHeaderStatus('ready');
-                        addLog('✓ All agents completed their tasks', 'success');
-                    }
-                };
-
-                eventSource.onerror = (error) => {
-                    console.error('SSE Connection Error:', error);
-                    console.error('EventSource readyState:', eventSource.readyState);
-                    console.error('Stream URL:', `${API_BASE}${streamUrl}`);
-
-                    eventSource.close();
-                    document.getElementById('searchBtn').disabled = false;
-                    document.getElementById('searchBtn').textContent = '🚀 Search All Providers';
-                    updateHeaderStatus('ready');
-
-                    addLog('✗ Connection lost: Stream disconnected', 'error');
-                    addLog('→ Check browser console for details', 'warning');
-
-                    // Show helpful error message
-                    const providerCards = document.querySelectorAll('.provider-card.searching');
-                    providerCards.forEach(card => {
-                        const priceContainer = card.querySelector('[id^="price-"]');
-                        if (priceContainer) {
-                            priceContainer.innerHTML = `
-                                <div class="price-label" style="color: var(--error);">Connection Lost</div>
-                                <div class="price-value" style="font-size: 0.9rem; color: var(--gray);">Check console & API connection</div>
-                            `;
-                        }
-                    });
-                };
+                // Connect to SSE with automatic reconnection
+                connectToStream(runId, streamUrl);
 
             } catch (error) {
                 addLog('✗ Search failed: ' + error.message, 'error');

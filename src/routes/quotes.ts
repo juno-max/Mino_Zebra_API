@@ -112,7 +112,7 @@ router.get('/quotes/:runId', (req: Request, res: Response) => {
 
 /**
  * GET /api/quotes/:runId/stream
- * SSE endpoint for real-time quote updates
+ * SSE endpoint for real-time quote updates with reconnection support
  */
 router.get('/quotes/:runId/stream', (req: Request, res: Response) => {
   const { runId } = req.params;
@@ -124,16 +124,22 @@ router.get('/quotes/:runId/stream', (req: Request, res: Response) => {
     });
   }
 
-  // Set SSE headers
+  // Set SSE headers with longer timeout
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
 
-  // Send existing events
-  let lastEventIndex = 0;
-  for (const event of run.events) {
-    res.write(`data: ${JSON.stringify(event)}\n\n`);
-    lastEventIndex++;
+  // Support reconnection - check Last-Event-ID
+  const lastEventId = req.headers['last-event-id'];
+  const lastEventIdStr = Array.isArray(lastEventId) ? lastEventId[0] : lastEventId;
+  let lastEventIndex = lastEventIdStr ? parseInt(lastEventIdStr, 10) + 1 : 0;
+
+  // Send existing events (from lastEventIndex onwards)
+  for (let i = lastEventIndex; i < run.events.length; i++) {
+    res.write(`id: ${i}\n`);
+    res.write(`data: ${JSON.stringify(run.events[i])}\n\n`);
+    lastEventIndex = i + 1;
   }
 
   // Poll for new events
@@ -145,16 +151,18 @@ router.get('/quotes/:runId/stream', (req: Request, res: Response) => {
       return;
     }
 
-    // Send new events
+    // Send new events with IDs
     for (let i = lastEventIndex; i < currentRun.events.length; i++) {
+      res.write(`id: ${i}\n`);
       res.write(`data: ${JSON.stringify(currentRun.events[i])}\n\n`);
-      lastEventIndex++;
+      lastEventIndex = i + 1;
     }
 
     // Check if completed
     if (currentRun.status === 'completed') {
-      // Send final result
+      // Send final result with ID
       if (currentRun.result) {
+        res.write(`id: ${lastEventIndex}\n`);
         res.write(`data: ${JSON.stringify({
           type: 'complete',
           aggregation: currentRun.result,
@@ -170,10 +178,10 @@ router.get('/quotes/:runId/stream', (req: Request, res: Response) => {
     clearInterval(intervalId);
   });
 
-  // Send heartbeat to keep connection alive
+  // Send heartbeat more frequently to keep connection alive
   const heartbeatId = setInterval(() => {
     res.write(': heartbeat\n\n');
-  }, 10000);
+  }, 5000); // Every 5 seconds instead of 10
 
   req.on('close', () => {
     clearInterval(heartbeatId);

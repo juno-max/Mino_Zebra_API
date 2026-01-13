@@ -745,7 +745,118 @@
             startQuoteSearch();
         });
 
+        // Reconnection logic for resilient SSE streaming
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 10;
+        let pollingFallbackInterval = null;
+        let isCompleted = false;
+
+        function connectToStream(runId, streamUrl) {
+            if (isCompleted) return;
+
+            addLog(`→ Connecting to stream (attempt ${reconnectAttempts + 1})...`, 'info');
+
+            eventSource = new EventSource(`${API_BASE}${streamUrl}`);
+
+            eventSource.onopen = () => {
+                if (reconnectAttempts > 0) {
+                    addLog('✓ Reconnected successfully!', 'success');
+                }
+                reconnectAttempts = 0; // Reset on successful connection
+            };
+
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'activity' && data.activity) {
+                    addLog(`🤖 ${data.provider}: ${data.activity}`, 'agent');
+                    updateProviderActivity(data.providerId, data.activity);
+                }
+
+                if (data.type === 'progress' || data.type === 'complete') {
+                    updateProviderCards(data.aggregation);
+                }
+
+                if (data.type === 'complete') {
+                    isCompleted = true;
+                    eventSource.close();
+                    if (pollingFallbackInterval) {
+                        clearInterval(pollingFallbackInterval);
+                    }
+                    document.getElementById('searchBtn').disabled = false;
+                    document.getElementById('searchBtn').textContent = '🔄 Search Again';
+                    updateHeaderStatus('ready');
+                    addLog('✓ All agents completed their tasks', 'success');
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('SSE Connection Error:', error);
+                console.error('EventSource readyState:', eventSource.readyState);
+
+                eventSource.close();
+
+                if (isCompleted) {
+                    return; // Don't reconnect if already completed
+                }
+
+                reconnectAttempts++;
+
+                if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
+                    // Exponential backoff: 2^n seconds (max 30 seconds)
+                    const delay = Math.min(Math.pow(2, reconnectAttempts) * 1000, 30000);
+                    addLog(`⚠ Connection lost. Reconnecting in ${delay/1000}s...`, 'warning');
+
+                    setTimeout(() => {
+                        connectToStream(runId, streamUrl);
+                    }, delay);
+                } else {
+                    // Switch to polling fallback
+                    addLog('→ Switching to polling mode...', 'warning');
+                    startPollingFallback(runId);
+                }
+            };
+        }
+
+        // Fallback polling mechanism if SSE keeps failing
+        async function startPollingFallback(runId) {
+            if (pollingFallbackInterval) return; // Already polling
+
+            addLog('→ Using HTTP polling for updates', 'info');
+
+            pollingFallbackInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/quotes/${runId}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.status === 'completed' && data.quotes) {
+                        // Got final result via polling
+                        updateProviderCards(data);
+                        isCompleted = true;
+                        clearInterval(pollingFallbackInterval);
+                        document.getElementById('searchBtn').disabled = false;
+                        document.getElementById('searchBtn').textContent = '🔄 Search Again';
+                        updateHeaderStatus('ready');
+                        addLog('✓ Results received via polling', 'success');
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }, 3000); // Poll every 3 seconds
+        }
+
         async function startQuoteSearch() {
+            // Reset state
+            isCompleted = false;
+            reconnectAttempts = 0;
+            if (pollingFallbackInterval) {
+                clearInterval(pollingFallbackInterval);
+                pollingFallbackInterval = null;
+            }
             const formData = {
                 vin: document.getElementById('vin').value,
                 employmentStatus: 'EMPLOYED',
@@ -797,56 +908,8 @@
                 addLog(`✓ Quote request ID: ${runId}`, 'success');
                 addLog('→ Opening real-time stream...', 'info');
 
-                // Connect to SSE
-                eventSource = new EventSource(`${API_BASE}${streamUrl}`);
-
-                eventSource.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-
-                    if (data.type === 'activity' && data.activity) {
-                        // Handle real-time activity updates
-                        addLog(`🤖 ${data.provider}: ${data.activity}`, 'agent');
-                        updateProviderActivity(data.providerId, data.activity);
-                    }
-
-                    if (data.type === 'progress' || data.type === 'complete') {
-                        updateProviderCards(data.aggregation);
-                    }
-
-                    if (data.type === 'complete') {
-                        eventSource.close();
-                        document.getElementById('searchBtn').disabled = false;
-                        document.getElementById('searchBtn').textContent = '🔄 Search Again';
-                        updateHeaderStatus('ready');
-                        addLog('✓ All agents completed their tasks', 'success');
-                    }
-                };
-
-                eventSource.onerror = (error) => {
-                    console.error('SSE Connection Error:', error);
-                    console.error('EventSource readyState:', eventSource.readyState);
-                    console.error('Stream URL:', `${API_BASE}${streamUrl}`);
-
-                    eventSource.close();
-                    document.getElementById('searchBtn').disabled = false;
-                    document.getElementById('searchBtn').textContent = '🚀 Search All Providers';
-                    updateHeaderStatus('ready');
-
-                    addLog('✗ Connection lost: Stream disconnected', 'error');
-                    addLog('→ Check browser console for details', 'warning');
-
-                    // Show helpful error message
-                    const providerCards = document.querySelectorAll('.provider-card.searching');
-                    providerCards.forEach(card => {
-                        const priceContainer = card.querySelector('[id^="price-"]');
-                        if (priceContainer) {
-                            priceContainer.innerHTML = `
-                                <div class="price-label" style="color: var(--error);">Connection Lost</div>
-                                <div class="price-value" style="font-size: 0.9rem; color: var(--gray);">Check console & API connection</div>
-                            `;
-                        }
-                    });
-                };
+                // Connect to SSE with automatic reconnection
+                connectToStream(runId, streamUrl);
 
             } catch (error) {
                 addLog('✗ Search failed: ' + error.message, 'error');

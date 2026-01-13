@@ -60,8 +60,8 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// API info endpoint
-app.get('/', (req: Request, res: Response) => {
+// API info endpoint (moved from root to /api for docs)
+app.get('/api', (req: Request, res: Response) => {
   res.json({
     name: 'Mino Zebra API',
     description: 'Insurance quote aggregator using Mino.ai agents',

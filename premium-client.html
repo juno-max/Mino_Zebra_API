@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Quote Aggregator - Premium</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --oscar-blue: #0082FF;
+            --oscar-cream: #F9F1E9;
+            --oscar-dark: #1A1A1A;
+            --oscar-gray: #6B7280;
+            --oscar-light-gray: #F3F4F6;
+            --success-green: #10B981;
+            --warning-yellow: #F59E0B;
+            --error-red: #EF4444;
+            --bg-white: #FFFFFF;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--oscar-cream);
+            color: var(--oscar-dark);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: var(--bg-white);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--oscar-blue);
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.875rem;
+            color: var(--oscar-gray);
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: var(--oscar-dark);
+        }
+
+        .main-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            gap: 2rem;
+            min-height: calc(100vh - 120px);
+        }
+
+        /* LEFT COLUMN - Providers */
+        .providers-column {
+            background: var(--bg-white);
+            border-radius: 16px;
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .providers-header {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--oscar-dark);
+        }
+
+        .provider-card {
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 12px;
+            background: var(--oscar-light-gray);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .provider-card:hover {
+            transform: translateX(4px);
+        }
+
+        .provider-card.pending {
+            background: #FEF3C7;
+            border-left: 4px solid var(--warning-yellow);
+        }
+
+        .provider-card.in_progress {
+            background: #DBEAFE;
+            border-left: 4px solid var(--oscar-blue);
+            animation: pulse 2s infinite;
+        }
+
+        .provider-card.completed {
+            background: #D1FAE5;
+            border-left: 4px solid var(--success-green);
+        }
+
+        .provider-card.failed {
+            background: #FEE2E2;
+            border-left: 4px solid var(--error-red);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .provider-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            color: var(--oscar-dark);
+        }
+
+        .provider-status {
+            font-size: 0.75rem;
+            color: var(--oscar-gray);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.pending { background: var(--warning-yellow); }
+        .status-dot.in_progress { background: var(--oscar-blue); }
+        .status-dot.completed { background: var(--success-green); }
+        .status-dot.failed { background: var(--error-red); }
+
+        .provider-progress {
+            height: 4px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 2px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .provider-progress-fill {
+            height: 100%;
+            background: var(--oscar-blue);
+            transition: width 0.3s ease;
+        }
+
+        .provider-price {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--oscar-blue);
+            margin-top: 0.5rem;
+        }
+
+        /* MIDDLE COLUMN - Questionnaire */
+        .questionnaire-column {
+            background: var(--bg-white);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .questionnaire-header {
+            margin-bottom: 2rem;
+        }
+
+        .questionnaire-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--oscar-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .questionnaire-subtitle {
+            color: var(--oscar-gray);
+            font-size: 0.95rem;
+        }
+
+        .form-section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--oscar-dark);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--oscar-blue);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--oscar-dark);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background: var(--bg-white);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--oscar-blue);
+            box-shadow: 0 0 0 3px rgba(0, 130, 255, 0.1);
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            background: var(--oscar-light-gray);
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 1rem 2rem;
+            background: var(--oscar-blue);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+        }
+
+        .submit-button:hover {
+            background: #0066CC;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 130, 255, 0.3);
+        }
+
+        .submit-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* RIGHT COLUMN - API Performance */
+        .performance-column {
+            position: sticky;
+            top: 100px;
+            height: fit-content;
+        }
+
+        .performance-card {
+            background: var(--bg-white);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .performance-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--oscar-dark);
+        }
+
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: var(--oscar-light-gray);
+            border-radius: 8px;
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--oscar-gray);
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: var(--oscar-dark);
+        }
+
+        .metric-value.success { color: var(--success-green); }
+        .metric-value.warning { color: var(--warning-yellow); }
+        .metric-value.error { color: var(--error-red); }
+
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.75rem;
+            background: var(--oscar-dark);
+            color: #10B981;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .log-entry {
+            margin-bottom: 0.25rem;
+            line-height: 1.4;
+        }
+
+        .log-time {
+            color: var(--oscar-gray);
+        }
+
+        .log-info { color: var(--oscar-blue); }
+        .log-success { color: var(--success-green); }
+        .log-warning { color: var(--warning-yellow); }
+        .log-error { color: var(--error-red); }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .main-container {
+                grid-template-columns: 250px 1fr 280px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+
+            .providers-column,
+            .performance-column {
+                position: static;
+            }
+        }
+
+        /* Loading State */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">🦓 Zebra Quote</div>
+            <div class="header-stats">
+                <div class="stat-item">
+                    <span>Status:</span>
+                    <span class="stat-value" id="headerStatus">Ready</span>
+                </div>
+                <div class="stat-item">
+                    <span>Providers:</span>
+                    <span class="stat-value" id="headerProviders">0/0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Time:</span>
+                    <span class="stat-value" id="headerTime">0s</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Three-Column Layout -->
+    <div class="main-container">
+        <!-- LEFT COLUMN: Providers -->
+        <div class="providers-column">
+            <div class="providers-header">Insurance Providers</div>
+            <div id="providersList">
+                <div class="provider-card pending">
+                    <div class="provider-name">Traders Insurance</div>
+                    <div class="provider-status">
+                        <span class="status-dot pending"></span>
+                        <span>Waiting...</span>
+                    </div>
+                    <div class="provider-progress">
+                        <div class="provider-progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="provider-card pending">
+                    <div class="provider-name">Liberty Mutual</div>
+                    <div class="provider-status">
+                        <span class="status-dot pending"></span>
+                        <span>Waiting...</span>
+                    </div>
+                    <div class="provider-progress">
+                        <div class="provider-progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="provider-card pending">
+                    <div class="provider-name">AssuranceAmerica</div>
+                    <div class="provider-status">
+                        <span class="status-dot pending"></span>
+                        <span>Waiting...</span>
+                    </div>
+                    <div class="provider-progress">
+                        <div class="provider-progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MIDDLE COLUMN: Questionnaire -->
+        <div class="questionnaire-column">
+            <div class="questionnaire-header">
+                <h1 class="questionnaire-title">Get Your Insurance Quote</h1>
+                <p class="questionnaire-subtitle">Fill out the form below and we'll get quotes from multiple providers instantly</p>
+            </div>
+
+            <form id="quoteForm">
+                <!-- Driver Information -->
+                <div class="form-section">
+                    <h2 class="section-title">Driver Information</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="firstName">First Name</label>
+                            <input type="text" id="firstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Last Name</label>
+                            <input type="text" id="lastName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dateOfBirth">Date of Birth</label>
+                            <input type="date" id="dateOfBirth" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="gender">Gender</label>
+                            <select id="gender" required>
+                                <option value="">Select...</option>
+                                <option value="1">Female</option>
+                                <option value="0">Male</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" placeholder="(XXX) XXX-XXXX" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="maritalStatus">Marital Status</label>
+                            <select id="maritalStatus" required>
+                                <option value="">Select...</option>
+                                <option value="0">Single</option>
+                                <option value="1">Married</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="education">Education Level</label>
+                            <select id="education" required>
+                                <option value="">Select...</option>
+                                <option value="0">High School</option>
+                                <option value="1">Bachelor's Degree</option>
+                                <option value="2">Master's Degree</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="employment">Employment Status</label>
+                            <select id="employment" required>
+                                <option value="">Select...</option>
+                                <option value="0">Employed</option>
+                                <option value="1">Self-Employed</option>
+                                <option value="2">Unemployed</option>
+                                <option value="3">Retired</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="licenseNumber">License Number</label>
+                            <input type="text" id="licenseNumber" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vehicle Information -->
+                <div class="form-section">
+                    <h2 class="section-title">Vehicle Information</h2>
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="vin">VIN (Vehicle Identification Number)</label>
+                            <input type="text" id="vin" maxlength="17" placeholder="17-character VIN" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="year">Year</label>
+                            <input type="number" id="year" min="1990" max="2026" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="make">Make</label>
+                            <input type="text" id="make" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="model">Model</label>
+                            <input type="text" id="model" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="annualMileage">Annual Mileage</label>
+                            <input type="number" id="annualMileage" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address Information -->
+                <div class="form-section">
+                    <h2 class="section-title">Address Information</h2>
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="address">Street Address</label>
+                            <input type="text" id="address" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="city">City</label>
+                            <input type="text" id="city" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="state">State</label>
+                            <input type="text" id="state" maxlength="2" placeholder="TX" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="zipcode">ZIP Code</label>
+                            <input type="text" id="zipcode" maxlength="5" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Policy Information -->
+                <div class="form-section">
+                    <h2 class="section-title">Policy Details</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="policyStartDate">Policy Start Date</label>
+                            <input type="date" id="policyStartDate" required>
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" id="currentlyInsured">
+                                <label for="currentlyInsured" style="margin: 0;">Currently Insured</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-button" id="submitBtn">
+                    Get Quotes from All Providers
+                </button>
+            </form>
+        </div>
+
+        <!-- RIGHT COLUMN: API Performance -->
+        <div class="performance-column">
+            <!-- Performance Metrics -->
+            <div class="performance-card">
+                <div class="performance-title">⚡ Performance Metrics</div>
+                <div class="metric-item">
+                    <span class="metric-label">Total Requests</span>
+                    <span class="metric-value" id="metricRequests">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Elapsed Time</span>
+                    <span class="metric-value" id="metricTime">0s</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Completed</span>
+                    <span class="metric-value success" id="metricCompleted">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">In Progress</span>
+                    <span class="metric-value warning" id="metricInProgress">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Failed</span>
+                    <span class="metric-value error" id="metricFailed">0</span>
+                </div>
+            </div>
+
+            <!-- Real-time Logs -->
+            <div class="performance-card">
+                <div class="performance-title">📡 Real-time API Logs</div>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry log-info">[SYSTEM] Waiting for quote request...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        let eventSource = null;
+        let startTime = null;
+        let timerInterval = null;
+
+        // Load data from API
+        async function loadPrefilledData() {
+            try {
+                const response = await fetch(`${API_BASE}/sample-data`);
+                const data = await response.json();
+
+                // Fill driver information
+                document.getElementById('firstName').value = data.driver.firstName || '';
+                document.getElementById('lastName').value = data.driver.lastName || '';
+
+                // Convert date format from MM/DD/YYYY to YYYY-MM-DD
+                if (data.driver.dateOfBirth) {
+                    const [month, day, year] = data.driver.dateOfBirth.split('/');
+                    document.getElementById('dateOfBirth').value = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                }
+
+                document.getElementById('gender').value = data.driver.gender ?? '';
+                document.getElementById('phone').value = data.driver.phone || '';
+                document.getElementById('email').value = data.driver.email || '';
+                document.getElementById('maritalStatus').value = data.driver.maritalStatus ?? '';
+                document.getElementById('education').value = data.driver.education ?? '';
+                document.getElementById('employment').value = data.driver.employment ?? '';
+                document.getElementById('licenseNumber').value = data.driver.licenseNumber || '';
+
+                // Fill vehicle information
+                document.getElementById('vin').value = data.vehicle.vin || '';
+                document.getElementById('year').value = data.vehicle.year || '';
+                document.getElementById('make').value = data.vehicle.make || '';
+                document.getElementById('model').value = data.vehicle.model || '';
+                document.getElementById('annualMileage').value = data.vehicle.annualMileage || '';
+
+                // Fill address information
+                document.getElementById('address').value = data.address.street || '';
+                document.getElementById('city').value = data.address.city || '';
+                document.getElementById('state').value = data.address.state || '';
+                document.getElementById('zipcode').value = data.address.zipcode || '';
+
+                // Fill policy information
+                document.getElementById('policyStartDate').value = data.policy.startDate || '';
+                document.getElementById('currentlyInsured').checked = data.policy.currentlyInsured || false;
+
+                addLog('✓ Pre-filled data loaded from API', 'success');
+            } catch (error) {
+                addLog('⚠ Could not load pre-filled data', 'warning');
+                console.error('Error loading data:', error);
+            }
+        }
+
+        // Initialize
+        loadPrefilledData();
+
+        // Form submission
+        document.getElementById('quoteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                vin: document.getElementById('vin').value,
+                employmentStatus: 'EMPLOYED',
+                educationLevel: 'BACHELORS',
+                phone: document.getElementById('phone').value.replace(/\D/g, '').slice(0, 10),
+                policyStartDate: document.getElementById('policyStartDate').value,
+                mailingAddress: document.getElementById('address').value,
+                isMailingSameAsGaraging: true
+            };
+
+            // Format phone as XXX-XXX-XXXX
+            if (formData.phone.length === 10) {
+                formData.phone = `${formData.phone.slice(0,3)}-${formData.phone.slice(3,6)}-${formData.phone.slice(6)}`;
+            }
+
+            try {
+                document.getElementById('submitBtn').disabled = true;
+                document.getElementById('submitBtn').textContent = 'Processing...';
+
+                addLog('→ Sending quote request to API...', 'info');
+                updateHeaderStatus('Processing');
+
+                const response = await fetch(`${API_BASE}/api/quotes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData),
+                });
+
+                const { runId, streamUrl } = await response.json();
+                addLog(`✓ Quote request created: ${runId}`, 'success');
+
+                startTime = Date.now();
+                startTimer();
+
+                // Connect to SSE
+                eventSource = new EventSource(`${API_BASE}${streamUrl}`);
+                addLog('→ Connected to real-time stream', 'info');
+
+                eventSource.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'progress' || data.type === 'complete') {
+                        updateProviders(data.aggregation);
+                        updateMetrics(data.aggregation);
+                    }
+
+                    if (data.type === 'complete') {
+                        eventSource.close();
+                        stopTimer();
+                        document.getElementById('submitBtn').disabled = false;
+                        document.getElementById('submitBtn').textContent = 'Get New Quotes';
+                        updateHeaderStatus('Completed');
+                        addLog('✓ All quotes received!', 'success');
+                    }
+                };
+
+                eventSource.onerror = () => {
+                    eventSource.close();
+                    stopTimer();
+                    document.getElementById('submitBtn').disabled = false;
+                    document.getElementById('submitBtn').textContent = 'Get Quotes';
+                    updateHeaderStatus('Error');
+                    addLog('✗ Connection error', 'error');
+                };
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = 'Get Quotes';
+                updateHeaderStatus('Error');
+                addLog('✗ Request failed: ' + error.message, 'error');
+            }
+        });
+
+        function updateProviders(aggregation) {
+            const container = document.getElementById('providersList');
+            container.innerHTML = '';
+
+            aggregation.quotes.forEach(quote => {
+                const card = document.createElement('div');
+                card.className = `provider-card ${quote.status}`;
+
+                let statusText = formatStatus(quote.status);
+                let priceHTML = '';
+
+                if (quote.finalQuote) {
+                    priceHTML = `<div class="provider-price">$${quote.finalQuote}/mo</div>`;
+                    addLog(`✓ ${quote.provider}: $${quote.finalQuote}/mo`, 'success');
+                } else if (quote.estimatedQuote) {
+                    priceHTML = `<div class="provider-price">$${quote.estimatedQuote.min}-${quote.estimatedQuote.max}/mo</div>`;
+                } else if (quote.error) {
+                    statusText = 'Failed';
+                    addLog(`✗ ${quote.provider}: ${quote.error}`, 'error');
+                }
+
+                card.innerHTML = `
+                    <div class="provider-name">${quote.provider}</div>
+                    <div class="provider-status">
+                        <span class="status-dot ${quote.status}"></span>
+                        <span>${statusText}</span>
+                    </div>
+                    <div class="provider-progress">
+                        <div class="provider-progress-fill" style="width: ${quote.progress}%"></div>
+                    </div>
+                    ${priceHTML}
+                `;
+
+                container.appendChild(card);
+            });
+
+            // Update header
+            const completed = aggregation.quotes.filter(q => q.status === 'completed' || q.status === 'failed').length;
+            document.getElementById('headerProviders').textContent = `${completed}/${aggregation.totalProviders}`;
+        }
+
+        function updateMetrics(aggregation) {
+            const completed = aggregation.quotes.filter(q => q.status === 'completed').length;
+            const inProgress = aggregation.quotes.filter(q => q.status === 'in_progress').length;
+            const failed = aggregation.quotes.filter(q => q.status === 'failed').length;
+
+            document.getElementById('metricRequests').textContent = aggregation.totalProviders;
+            document.getElementById('metricCompleted').textContent = completed;
+            document.getElementById('metricInProgress').textContent = inProgress;
+            document.getElementById('metricFailed').textContent = failed;
+        }
+
+        function addLog(message, type = 'info') {
+            const container = document.getElementById('logContainer');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateHeaderStatus(status) {
+            document.getElementById('headerStatus').textContent = status;
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (startTime) {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const timeStr = `${elapsed}s`;
+                    document.getElementById('headerTime').textContent = timeStr;
+                    document.getElementById('metricTime').textContent = timeStr;
+                }
+            }, 100);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function formatStatus(status) {
+            const map = {
+                'pending': 'Waiting...',
+                'in_progress': 'Processing',
+                'completed': 'Completed',
+                'failed': 'Failed'
+            };
+            return map[status] || status;
+        }
+    </script>
+</body>
+</html>

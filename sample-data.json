@@ -1,0 +1,35 @@
+{
+  "driver": {
+    "firstName": "Crystal",
+    "lastName": "Mcpherson",
+    "dateOfBirth": "10/06/1987",
+    "gender": 1,
+    "phone": "3372548478",
+    "email": "xyz_1_tf@thezebra.com",
+    "maritalStatus": 0,
+    "education": 1,
+    "employment": 0,
+    "licenseNumber": "3726454522",
+    "licenseState": "TX"
+  },
+  "vehicle": {
+    "vin": "2C3CDZAG2GH967639",
+    "year": 2016,
+    "make": "Dodge",
+    "model": "Challenger",
+    "submodel": "SXT 2dr Coupe",
+    "annualMileage": 10000,
+    "garagingAddress": "1304 E Copeland Rd"
+  },
+  "address": {
+    "street": "1304 E Copeland Rd",
+    "city": "Arlington",
+    "state": "TX",
+    "zipcode": "76011",
+    "county": "Tarrant County"
+  },
+  "policy": {
+    "startDate": "2025-09-25",
+    "currentlyInsured": true
+  }
+}

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Quote Aggregator - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkbox-group input {
+            width: auto;
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .quotes-container {
+            display: none;
+        }
+
+        .quotes-container.active {
+            display: block;
+        }
+
+        .quote-card {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #cbd5e0;
+        }
+
+        .quote-card.pending {
+            border-left-color: #ecc94b;
+        }
+
+        .quote-card.in_progress {
+            border-left-color: #4299e1;
+        }
+
+        .quote-card.completed {
+            border-left-color: #48bb78;
+        }
+
+        .quote-card.failed {
+            border-left-color: #f56565;
+        }
+
+        .quote-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .provider-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-badge.pending {
+            background: #fef5e7;
+            color: #d97706;
+        }
+
+        .status-badge.in_progress {
+            background: #ebf8ff;
+            color: #2563eb;
+        }
+
+        .status-badge.completed {
+            background: #f0fdf4;
+            color: #15803d;
+        }
+
+        .status-badge.failed {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .quote-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-top: 0.5rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Insurance Quote Aggregator</h1>
+            <p>Get quotes from multiple providers instantly</p>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 1.5rem;">Personal Information</h2>
+            <form id="quoteForm">
+                <div class="form-group">
+                    <label for="vin">Vehicle VIN</label>
+                    <input type="text" id="vin" value="12389adsfjalkdsf1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="employmentStatus">Employment Status</label>
+                    <select id="employmentStatus" required>
+                        <option value="EMPLOYED" selected>Employed</option>
+                        <option value="UNEMPLOYED">Unemployed</option>
+                        <option value="SELF_EMPLOYED">Self Employed</option>
+                        <option value="RETIRED">Retired</option>
+                        <option value="STUDENT">Student</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="educationLevel">Education Level</label>
+                    <select id="educationLevel" required>
+                        <option value="HIGH_SCHOOL">High School</option>
+                        <option value="SOME_COLLEGE">Some College</option>
+                        <option value="BACHELORS" selected>Bachelor's Degree</option>
+                        <option value="MASTERS">Master's Degree</option>
+                        <option value="DOCTORATE">Doctorate</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" value="555-555-5555" placeholder="XXX-XXX-XXXX" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="policyStartDate">Policy Start Date</label>
+                    <input type="date" id="policyStartDate" value="2025-12-15" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="mailingAddress">Mailing Address</label>
+                    <input type="text" id="mailingAddress" value="321 main street" required>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="isMailingSameAsGaraging" checked>
+                        <label for="isMailingSameAsGaraging" style="margin: 0;">Garaging address same as mailing</label>
+                    </div>
+                </div>
+
+                <button type="submit" id="submitBtn">Get Quotes</button>
+            </form>
+        </div>
+
+        <div class="quotes-container" id="quotesContainer">
+            <div class="card">
+                <h2 style="margin-bottom: 1.5rem;">Quote Results</h2>
+                <div id="quotesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        let eventSource = null;
+
+        document.getElementById('quoteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                vin: document.getElementById('vin').value,
+                employmentStatus: document.getElementById('employmentStatus').value,
+                educationLevel: document.getElementById('educationLevel').value,
+                phone: document.getElementById('phone').value,
+                policyStartDate: document.getElementById('policyStartDate').value,
+                mailingAddress: document.getElementById('mailingAddress').value,
+                isMailingSameAsGaraging: document.getElementById('isMailingSameAsGaraging').checked,
+            };
+
+            try {
+                // Disable form
+                document.getElementById('submitBtn').disabled = true;
+                document.getElementById('submitBtn').textContent = 'Processing...';
+
+                // Create quote request
+                const response = await fetch(`${API_BASE}/api/quotes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData),
+                });
+
+                const { runId, streamUrl } = await response.json();
+
+                // Show quotes container
+                document.getElementById('quotesContainer').classList.add('active');
+                document.getElementById('quotesList').innerHTML = '<div class="loading">Connecting to providers...</div>';
+
+                // Connect to SSE stream
+                eventSource = new EventSource(`${API_BASE}${streamUrl}`);
+
+                eventSource.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'progress' || data.type === 'complete') {
+                        updateQuotes(data.aggregation);
+                    }
+
+                    if (data.type === 'complete') {
+                        eventSource.close();
+                        document.getElementById('submitBtn').disabled = false;
+                        document.getElementById('submitBtn').textContent = 'Get New Quotes';
+                    }
+                };
+
+                eventSource.onerror = () => {
+                    eventSource.close();
+                    document.getElementById('submitBtn').disabled = false;
+                    document.getElementById('submitBtn').textContent = 'Get Quotes';
+                };
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to get quotes. Please try again.');
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = 'Get Quotes';
+            }
+        });
+
+        function updateQuotes(aggregation) {
+            const container = document.getElementById('quotesList');
+            container.innerHTML = '';
+
+            aggregation.quotes.forEach(quote => {
+                const card = document.createElement('div');
+                card.className = `quote-card ${quote.status}`;
+
+                let priceHTML = '';
+                if (quote.finalQuote) {
+                    priceHTML = `<div class="quote-price">$${quote.finalQuote}/mo</div>`;
+                } else if (quote.estimatedQuote) {
+                    priceHTML = `<div class="quote-price">$${quote.estimatedQuote.min} - $${quote.estimatedQuote.max}/mo</div>`;
+                } else if (quote.error) {
+                    priceHTML = `<div style="color: #dc2626; margin-top: 0.5rem;">${quote.error}</div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="quote-header">
+                        <div class="provider-name">${quote.provider}</div>
+                        <div class="status-badge ${quote.status}">${formatStatus(quote.status)}</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${quote.progress}%"></div>
+                    </div>
+                    ${priceHTML}
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function formatStatus(status) {
+            return status.split('_').map(word =>
+                word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
+        }
+    </script>
+</body>
+</html>

@@ -48,7 +48,7 @@ function parseSSELine(line: string): MinoEvent | null {
  * Handles SSE streaming and extracts the final result
  */
 export async function runMinoAutomation(config: MinoAutomationConfig): Promise<MinoAutomationResult> {
-  const { url, goal, apiKey, timeout = 300000, browserProfile = 'lite', onProgress } = config;
+  const { url, goal, apiKey, timeout = 1200000, browserProfile = 'lite', onProgress } = config;
 
   // Use sandbox endpoint for faster performance
   const minoEndpoint = process.env.MINO_API_ENDPOINT || 'https://ux-labs.sandbox.tinyfish.io/v1/automation/run-sse';

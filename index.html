@@ -858,14 +858,15 @@
 
         // Reconnection logic for resilient SSE streaming
         let reconnectAttempts = 0;
-        const MAX_RECONNECT_ATTEMPTS = 10;
+        const MAX_RECONNECT_ATTEMPTS = 50; // Increased from 10 - connections close every 4 minutes by design
         let pollingFallbackInterval = null;
         let isCompleted = false;
 
         function connectToStream(runId, streamUrl) {
             if (isCompleted) return;
 
-            addLog(`→ Connecting to stream (attempt ${reconnectAttempts + 1})...`, 'info');
+            const attemptMsg = reconnectAttempts > 0 ? ` (attempt ${reconnectAttempts + 1})` : '';
+            addLog(`→ Connecting to stream${attemptMsg}...`, 'info');
 
             eventSource = new EventSource(`${API_BASE}${streamUrl}`);
 
@@ -924,15 +925,16 @@
                 reconnectAttempts++;
 
                 if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
-                    // Exponential backoff: 2^n seconds (max 30 seconds)
-                    const delay = Math.min(Math.pow(2, reconnectAttempts) * 1000, 30000);
+                    // Shorter delays since connections close every 4 min by design
+                    // 1s, 2s, 3s, 5s, 5s, 5s... (max 5 seconds)
+                    const delay = Math.min(reconnectAttempts * 1000, 5000);
                     addLog(`⚠ Connection lost. Reconnecting in ${delay/1000}s...`, 'warning');
 
                     setTimeout(() => {
                         connectToStream(runId, streamUrl);
                     }, delay);
                 } else {
-                    // Switch to polling fallback
+                    // Switch to polling fallback after 50 attempts
                     addLog('→ Switching to polling mode...', 'warning');
                     startPollingFallback(runId);
                 }
@@ -954,20 +956,25 @@
 
                     const data = await response.json();
 
-                    if (data.status === 'completed' && data.quotes) {
-                        // Got final result via polling
+                    // Update provider cards with current progress (not just final results)
+                    if (data.quotes) {
                         updateProviderCards(data);
-                        isCompleted = true;
-                        clearInterval(pollingFallbackInterval);
-                        document.getElementById('searchBtn').disabled = false;
-                        document.getElementById('searchBtn').textContent = '🔄 Search Again';
-                        updateHeaderStatus('ready');
-                        addLog('✓ Results received via polling', 'success');
+
+                        // Check if all completed
+                        if (data.status === 'completed') {
+                            isCompleted = true;
+                            clearInterval(pollingFallbackInterval);
+                            document.getElementById('searchBtn').disabled = false;
+                            document.getElementById('searchBtn').textContent = '🔄 Search Again';
+                            updateHeaderStatus('ready');
+                            addLog('✓ All results received via polling', 'success');
+                        }
                     }
                 } catch (error) {
                     console.error('Polling error:', error);
+                    // Continue polling even on error
                 }
-            }, 3000); // Poll every 3 seconds
+            }, 2000); // Poll every 2 seconds
         }
 
         async function startQuoteSearch() {

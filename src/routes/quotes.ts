@@ -87,7 +87,7 @@ router.post('/quotes', async (req: Request, res: Response) => {
 
 /**
  * GET /api/quotes/:runId
- * Get current status of a quote run
+ * Get current status of a quote run (supports HTTP polling fallback)
  */
 router.get('/quotes/:runId', (req: Request, res: Response) => {
   const { runId } = req.params;
@@ -101,6 +101,15 @@ router.get('/quotes/:runId', (req: Request, res: Response) => {
 
   if (run.status === 'completed' && run.result) {
     return res.json(run.result);
+  }
+
+  // Return current progress for HTTP polling fallback
+  // Find the latest progress event
+  const progressEvents = run.events.filter(e => e.type === 'progress' || e.type === 'complete');
+  const latestProgress = progressEvents[progressEvents.length - 1];
+
+  if (latestProgress && latestProgress.aggregation) {
+    return res.json(latestProgress.aggregation);
   }
 
   return res.json({
@@ -169,22 +178,36 @@ router.get('/quotes/:runId/stream', (req: Request, res: Response) => {
         })}\n\n`);
       }
       clearInterval(intervalId);
+      clearInterval(heartbeatId);
+      clearTimeout(gracefulTimeoutId);
       res.end();
     }
   }, 500); // Poll every 500ms
 
-  // Cleanup on client disconnect
-  req.on('close', () => {
-    clearInterval(intervalId);
-  });
-
   // Send heartbeat more frequently to keep connection alive
   const heartbeatId = setInterval(() => {
     res.write(': heartbeat\n\n');
-  }, 5000); // Every 5 seconds instead of 10
+  }, 5000); // Every 5 seconds
 
-  req.on('close', () => {
+  // Graceful timeout: Close connection after 4 minutes to avoid Vercel timeout (5 min max)
+  // Client will automatically reconnect and resume from last event ID
+  const gracefulTimeoutId = setTimeout(() => {
+    console.log(`SSE stream ${runId}: Graceful timeout, closing connection for reconnect`);
+    clearInterval(intervalId);
     clearInterval(heartbeatId);
+
+    // Send a reconnect message before closing
+    res.write(`: reconnect-needed\n\n`);
+
+    // Close the connection gracefully
+    res.end();
+  }, 240000); // 4 minutes (240 seconds) - before Vercel's 5-minute limit
+
+  // Cleanup on client disconnect
+  req.on('close', () => {
+    clearInterval(intervalId);
+    clearInterval(heartbeatId);
+    clearTimeout(gracefulTimeoutId);
   });
 });
 

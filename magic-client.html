@@ -921,6 +921,20 @@
                             <div class="price-label" style="color: var(--error);">Failed</div>
                         `;
                         addLog(`✗ ${quote.provider}: ${quote.error}`, 'error');
+                    } else if (quote.status === 'completed' && quote.details) {
+                        // Agent completed but couldn't extract quote (common with real insurance sites)
+                        priceContainer.innerHTML = `
+                            <div class="price-label" style="color: var(--warning);">⚠️ Agent Contact Required</div>
+                            <div class="price-value" style="font-size: 0.9rem; color: var(--gray); line-height: 1.4;">${quote.details.substring(0, 120)}${quote.details.length > 120 ? '...' : ''}</div>
+                        `;
+                        addLog(`⚠️ ${quote.provider}: ${quote.details}`, 'warning');
+                    } else if (quote.status === 'completed') {
+                        // Completed but no data extracted
+                        priceContainer.innerHTML = `
+                            <div class="price-label" style="color: var(--warning);">⚠️ No Quote Available</div>
+                            <div class="price-value" style="font-size: 0.9rem; color: var(--gray);">Form completed but quote requires agent contact</div>
+                        `;
+                        addLog(`⚠️ ${quote.provider}: Form completed, quote requires agent contact`, 'warning');
                     } else if (quote.status === 'in_progress') {
                         const statusTexts = {
                             25: 'Connecting...',

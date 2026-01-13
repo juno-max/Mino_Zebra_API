@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { randomBytes } from 'crypto';
 import { validateUserData } from '../types/user-data.js';
 import { QuoteAggregationResult, ProgressEvent } from '../types/quote.js';
-import { aggregateQuotes } from '../services/quote-aggregator.js';
+import { aggregateQuotesWithWorkflow } from '../services/workflow-quote-aggregator.js';
 
 const router = Router();
 
@@ -48,8 +48,8 @@ router.post('/quotes', async (req: Request, res: Response) => {
       events: [],
     });
 
-    // Start aggregation in background
-    aggregateQuotes(userData, apiKey, runId, (event: ProgressEvent) => {
+    // Start aggregation in background with multi-step workflow
+    aggregateQuotesWithWorkflow(userData, apiKey, runId, (event: ProgressEvent) => {
       const run = quoteRuns.get(runId);
       if (run) {
         run.events.push(event);

@@ -90,7 +90,7 @@ export class QuoteAggregator extends EventEmitter {
         url,
         goal,
         apiKey: this.apiKey,
-        timeout: 600000, // 10 minutes per provider
+        timeout: 300000, // 5 minutes per provider (sandbox is faster)
         browserProfile: 'lite',
         onProgress: (minoEvent) => {
           // Extract activity from Mino progress events

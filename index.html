@@ -881,11 +881,21 @@
 
                 if (data.type === 'activity' && data.activity) {
                     addLog(`🤖 ${data.provider}: ${data.activity}`, 'agent');
-                    updateProviderActivity(data.providerId, data.activity);
+                    updateProviderActivity(data.providerId, data.activity, data.minoRunId);
                 }
 
                 if (data.type === 'progress' || data.type === 'complete') {
                     updateProviderCards(data.aggregation);
+
+                    // Log Mino run IDs when available
+                    if (data.aggregation && data.aggregation.quotes) {
+                        data.aggregation.quotes.forEach(quote => {
+                            if (quote.currentStepMinoRunId && !window[`logged_${quote.providerId}_${quote.currentStepMinoRunId}`]) {
+                                addLog(`→ ${quote.provider} Mino API call: ${quote.currentStepMinoRunId.substring(0, 8)}...`, 'info');
+                                window[`logged_${quote.providerId}_${quote.currentStepMinoRunId}`] = true;
+                            }
+                        });
+                    }
                 }
 
                 if (data.type === 'complete') {
@@ -1180,10 +1190,14 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        function updateProviderActivity(providerId, activity) {
+        function updateProviderActivity(providerId, activity, minoRunId) {
             const activityText = document.getElementById(`activity-text-${providerId}`);
             if (activityText) {
-                activityText.textContent = activity;
+                let displayText = activity;
+                if (minoRunId) {
+                    displayText += ` [Mino: ${minoRunId.substring(0, 8)}...]`;
+                }
+                activityText.textContent = displayText;
                 activityText.style.animation = 'slideIn 0.3s ease';
             }
         }

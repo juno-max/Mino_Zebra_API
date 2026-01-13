@@ -20,6 +20,8 @@ export interface Quote {
   details?: string;
   error?: string;
   timestamp: string;
+  currentStepMinoRunId?: string; // Mino run ID for current step
+  allMinoRunIds?: string[]; // All Mino run IDs collected so far (one per step)
 }
 
 /**
@@ -64,4 +66,5 @@ export interface ProgressEvent {
   activity?: string; // Agent activity description
   quote?: Quote;
   aggregation?: QuoteAggregationResult;
+  minoRunId?: string; // Mino run ID for current step (for activity events)
 }

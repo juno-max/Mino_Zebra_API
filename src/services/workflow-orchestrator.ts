@@ -56,7 +56,8 @@ export class WorkflowOrchestrator extends EventEmitter {
         currentUrl: config.baseUrl
       },
       startTime: new Date(),
-      status: 'initializing'
+      status: 'initializing',
+      minoRunIds: [] // Track all Mino API run IDs
     };
 
     this.workflows.set(workflowId, workflow);
@@ -150,6 +151,11 @@ export class WorkflowOrchestrator extends EventEmitter {
           step.status = 'success';
           step.outputData = result.outputData;
           step.minoRunId = result.minoRunId;
+
+          // Track Mino run ID in workflow array
+          if (result.minoRunId) {
+            workflow.minoRunIds.push(result.minoRunId);
+          }
 
           // Update session data with output for next step
           workflow.sessionData = {
@@ -271,7 +277,9 @@ export class WorkflowOrchestrator extends EventEmitter {
       progress: progress !== undefined ? progress : Math.round((workflow.currentStep / workflow.totalSteps) * 100),
       message,
       error: currentStep?.error,
-      timestamp: new Date()
+      timestamp: new Date(),
+      minoRunId: currentStep?.minoRunId, // Current step's Mino run ID
+      allMinoRunIds: workflow.minoRunIds // All Mino run IDs collected so far
     };
 
     this.emit('progress', event);

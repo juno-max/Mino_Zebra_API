@@ -138,7 +138,7 @@ export class WorkflowQuoteAggregator extends EventEmitter {
    * Handle workflow progress events
    */
   private handleWorkflowProgress(event: WorkflowProgressEvent): void {
-    const { providerId, currentStep, totalSteps, stepName, message, progress: workflowProgress } = event;
+    const { providerId, currentStep, totalSteps, stepName, message, progress: workflowProgress, minoRunId, allMinoRunIds } = event;
 
     // Calculate overall progress (0-100)
     const progress = workflowProgress || (currentStep && totalSteps ? Math.round((currentStep / totalSteps) * 100) : 0);
@@ -149,10 +149,12 @@ export class WorkflowQuoteAggregator extends EventEmitter {
       activity = `Step ${currentStep}/${totalSteps}: ${stepName}`;
     }
 
-    // Update quote
+    // Update quote with Mino run IDs
     this.updateQuote(providerId, {
       progress,
       activity,
+      currentStepMinoRunId: minoRunId,
+      allMinoRunIds: allMinoRunIds,
     });
 
     // Emit specific activity event for frontend
@@ -161,6 +163,7 @@ export class WorkflowQuoteAggregator extends EventEmitter {
       provider: this.getProviderName(providerId),
       providerId,
       activity,
+      minoRunId, // Include Mino run ID for current step
     };
     this.emit('progress', activityEvent);
   }

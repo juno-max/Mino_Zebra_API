@@ -51,6 +51,7 @@ export interface QuoteWorkflow {
     quoteReference?: string;
   };
   status: 'initializing' | 'running' | 'completed' | 'failed' | 'partial';
+  minoRunIds: string[]; // Track all Mino API run IDs (one per step)
 }
 
 export interface StepPromptTemplate {
@@ -103,4 +104,6 @@ export interface WorkflowProgressEvent {
   message: string;
   error?: string;
   timestamp: Date;
+  minoRunId?: string; // Current step's Mino run ID
+  allMinoRunIds?: string[]; // All Mino run IDs for this workflow so far
 }

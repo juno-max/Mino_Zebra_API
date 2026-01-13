@@ -138,11 +138,11 @@ export class QuoteAggregator extends EventEmitter {
           status: 'completed',
           progress: 100,
           activity: 'Quote extracted successfully!',
-          finalQuote: quote.quote,
+          finalQuote: quote.quote ?? undefined,
           estimatedQuote: quote.estimatedMin && quote.estimatedMax
             ? { min: quote.estimatedMin, max: quote.estimatedMax }
             : undefined,
-          details: quote.details,
+          details: quote.details ?? undefined,
         });
       } else {
         this.updateQuote(providerId, {

@@ -767,13 +767,24 @@
                 addLog('→ Agents will autonomously fill forms and extract quotes', 'agent');
 
                 // Start quote request
+                addLog('→ Sending request to API...', 'info');
                 const response = await fetch(`${API_BASE}/api/quotes`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData),
                 });
 
-                const { runId, streamUrl } = await response.json();
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
+                    addLog(`✗ API returned error: ${response.status} ${response.statusText}`, 'error');
+                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                }
+
+                const responseData = await response.json();
+                console.log('API Response:', responseData);
+
+                const { runId, streamUrl } = responseData;
                 currentRunId = runId;
 
                 addLog(`✓ Quote request ID: ${runId}`, 'success');
@@ -804,12 +815,30 @@
                     }
                 };
 
-                eventSource.onerror = () => {
+                eventSource.onerror = (error) => {
+                    console.error('SSE Connection Error:', error);
+                    console.error('EventSource readyState:', eventSource.readyState);
+                    console.error('Stream URL:', `${API_BASE}${streamUrl}`);
+
                     eventSource.close();
                     document.getElementById('searchBtn').disabled = false;
                     document.getElementById('searchBtn').textContent = '🚀 Search All Providers';
                     updateHeaderStatus('ready');
-                    addLog('✗ Connection error', 'error');
+
+                    addLog('✗ Connection lost: Stream disconnected', 'error');
+                    addLog('→ Check browser console for details', 'warning');
+
+                    // Show helpful error message
+                    const providerCards = document.querySelectorAll('.provider-card.searching');
+                    providerCards.forEach(card => {
+                        const priceContainer = card.querySelector('[id^="price-"]');
+                        if (priceContainer) {
+                            priceContainer.innerHTML = `
+                                <div class="price-label" style="color: var(--error);">Connection Lost</div>
+                                <div class="price-value" style="font-size: 0.9rem; color: var(--gray);">Check console & API connection</div>
+                            `;
+                        }
+                    });
                 };
 
             } catch (error) {

@@ -200,44 +200,6 @@ Return JSON:
   "estimatedMax": <number or null>,
   "details": "<coverage details>"
 }`
-  },
-  {
-    id: 'aaa',
-    name: 'AAA',
-    url: 'https://www.aaa.com/',
-    goalTemplate: `You are an AI agent getting an AAA (American Automobile Association) auto insurance quote. Fill out their form with:
-
-**DRIVER:**
-- Name: {{firstName}} {{lastName}}
-- DOB: {{dateOfBirth}}
-- Gender: {{gender}}
-- Marital Status: {{maritalStatus}}
-- Email: {{email}}
-- Phone: {{phone}}
-- Driver License: {{licenseNumber}} ({{state}})
-
-**VEHICLE:**
-- {{year}} {{make}} {{model}}
-- VIN: {{vin}}
-
-**ADDRESS:**
-- {{mailingAddress}}
-- {{city}}, {{state}} {{zipcode}}
-
-**POLICY:**
-- Effective Date: {{policyStartDate}}
-- Employment: {{employmentStatus}}
-- Education: {{educationLevel}}
-
-Navigate through the entire quote flow and extract the final monthly premium.
-
-Return JSON:
-{
-  "quote": <monthly premium>,
-  "estimatedMin": <number or null>,
-  "estimatedMax": <number or null>,
-  "details": "<coverage info>"
-}`
   }
 ];
 

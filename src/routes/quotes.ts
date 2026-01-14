@@ -3,9 +3,17 @@ import { randomBytes } from 'crypto';
 import { validateUserData } from '../types/user-data.js';
 import { QuoteAggregationResult, ProgressEvent } from '../types/quote.js';
 import { aggregateQuotesWithWorkflow } from '../services/workflow-quote-aggregator.js';
-import { kv } from '@vercel/kv';
+import { createClient } from '@vercel/kv';
 
 const router = Router();
+
+// Initialize KV client with environment variables
+const kv = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
+  ? createClient({
+      url: process.env.KV_REST_API_URL,
+      token: process.env.KV_REST_API_TOKEN,
+    })
+  : null;
 
 // Shared storage interface - works with both Vercel KV and in-memory fallback
 interface QuoteRunData {
@@ -19,7 +27,7 @@ const localQuoteRuns = new Map<string, QuoteRunData>();
 
 // Storage helpers that work with both KV and local
 async function getQuoteRun(runId: string): Promise<QuoteRunData | null> {
-  if (process.env.KV_REST_API_URL) {
+  if (kv) {
     // Use Vercel KV in production
     return await kv.get<QuoteRunData>(`quote:${runId}`);
   } else {
@@ -29,7 +37,7 @@ async function getQuoteRun(runId: string): Promise<QuoteRunData | null> {
 }
 
 async function setQuoteRun(runId: string, data: QuoteRunData): Promise<void> {
-  if (process.env.KV_REST_API_URL) {
+  if (kv) {
     // Use Vercel KV with 2-hour expiration
     await kv.set(`quote:${runId}`, data, { ex: 7200 });
   } else {

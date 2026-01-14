@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { randomBytes } from 'crypto';
 import { validateUserData } from '../types/user-data.js';
 import { QuoteAggregationResult, ProgressEvent } from '../types/quote.js';
-import { aggregateQuotesWithWorkflow } from '../services/workflow-quote-aggregator.js';
+import { aggregateQuotes } from '../services/quote-aggregator.js';
 import { kv as vercelKV } from '@vercel/kv';
 
 const router = Router();
@@ -85,8 +85,8 @@ router.post('/quotes', async (req: Request, res: Response) => {
       events: [],
     });
 
-    // Start aggregation in background with multi-step workflow
-    aggregateQuotesWithWorkflow(userData, apiKey, runId, async (event: ProgressEvent) => {
+    // Start aggregation in background - ONE API call per provider
+    aggregateQuotes(userData, apiKey, runId, async (event: ProgressEvent) => {
       await updateQuoteRunEvents(runId, event);
     })
       .then(async result => {

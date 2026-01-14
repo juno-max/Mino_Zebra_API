@@ -613,8 +613,8 @@
     <!-- Provider Showcase -->
     <div class="provider-showcase">
         <div class="showcase-header">
-            <div class="showcase-title">Compare Quotes from 10 Major Insurance Providers</div>
-            <div class="showcase-subtitle">AI agents search all providers simultaneously to find your best rate</div>
+            <div class="showcase-title">Compare Quotes from Top Insurance Providers</div>
+            <div class="showcase-subtitle">AI agents search verified providers simultaneously to find your best rate</div>
         </div>
         <div class="provider-showcase-grid">
             <div class="provider-chip">
@@ -628,30 +628,6 @@
             <div class="provider-chip">
                 <div class="provider-chip-name">State Farm</div>
                 <div class="provider-chip-url">statefarm.com</div>
-            </div>
-            <div class="provider-chip">
-                <div class="provider-chip-name">Allstate</div>
-                <div class="provider-chip-url">allstate.com</div>
-            </div>
-            <div class="provider-chip">
-                <div class="provider-chip-name">Liberty Mutual</div>
-                <div class="provider-chip-url">libertymutual.com</div>
-            </div>
-            <div class="provider-chip">
-                <div class="provider-chip-name">Nationwide</div>
-                <div class="provider-chip-url">nationwide.com</div>
-            </div>
-            <div class="provider-chip">
-                <div class="provider-chip-name">Farmers Insurance</div>
-                <div class="provider-chip-url">farmers.com</div>
-            </div>
-            <div class="provider-chip">
-                <div class="provider-chip-name">USAA</div>
-                <div class="provider-chip-url">usaa.com</div>
-            </div>
-            <div class="provider-chip">
-                <div class="provider-chip-name">Travelers</div>
-                <div class="provider-chip-url">travelers.com</div>
             </div>
             <div class="provider-chip">
                 <div class="provider-chip-name">American Family</div>
@@ -785,17 +761,11 @@
         let eventSource = null;
         let currentRunId = null;
 
-        // REAL insurance provider configurations - Now 10 providers!
+        // Working insurance providers - verified to return quotes
         const PROVIDERS = [
             { id: 'geico', name: 'GEICO', url: 'geico.com' },
             { id: 'progressive', name: 'Progressive', url: 'progressive.com' },
             { id: 'statefarm', name: 'State Farm', url: 'statefarm.com' },
-            { id: 'allstate', name: 'Allstate', url: 'allstate.com' },
-            { id: 'libertymutual', name: 'Liberty Mutual', url: 'libertymutual.com' },
-            { id: 'nationwide', name: 'Nationwide', url: 'nationwide.com' },
-            { id: 'farmers', name: 'Farmers Insurance', url: 'farmers.com' },
-            { id: 'usaa', name: 'USAA', url: 'usaa.com' },
-            { id: 'travelers', name: 'Travelers', url: 'travelers.com' },
             { id: 'americanfamily', name: 'American Family', url: 'amfam.com' }
         ];
 

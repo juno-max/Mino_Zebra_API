@@ -3,17 +3,13 @@ import { randomBytes } from 'crypto';
 import { validateUserData } from '../types/user-data.js';
 import { QuoteAggregationResult, ProgressEvent } from '../types/quote.js';
 import { aggregateQuotesWithWorkflow } from '../services/workflow-quote-aggregator.js';
-import { createClient } from '@vercel/kv';
+import { kv as vercelKV } from '@vercel/kv';
 
 const router = Router();
 
-// Initialize KV client with environment variables
-const kv = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
-  ? createClient({
-      url: process.env.KV_REST_API_URL,
-      token: process.env.KV_REST_API_TOKEN,
-    })
-  : null;
+// KV instance - automatically configured from environment variables
+// Will be available in production with KV_REST_API_URL and KV_REST_API_TOKEN
+const kv = process.env.KV_REST_API_URL ? vercelKV : null;
 
 // Shared storage interface - works with both Vercel KV and in-memory fallback
 interface QuoteRunData {
